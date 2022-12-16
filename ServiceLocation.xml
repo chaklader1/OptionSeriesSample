@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<services>
+    <!-- # Replay CG @ NY4 (New York). -->
+    <service id="ny4-replay" serviceId="Service.ContentGateway"
+             url="ams://cg-ny4-replay.activfinancial.com:9002/ContentGateway:Service?rxCompression=Rdc"/>
+    
+    <!-- # Replay CG @ NY4 (New York) via amst2 protocol. See http://support.activfinancial.com/modules/smartfaq/faq.php?faqid=306 -->
+    <service id="ny4-replay-http-tunnel" serviceId="Service.ContentGateway"
+             url="amst2://cg-ny4-replay.activfinancial.com:80/ContentGateway:Service?rxCompression=Rdc"/>
+    
+    <!-- # Trial CG @ NY4 (New York). -->
+    <service id="ny4-trial" serviceId="Service.ContentGateway"
+             url="ams://cg-ny4-trial.activfinancial.com:9005/ContentGateway:Service?rxCompression=Rdc"/>
+    
+    <!-- # Trial CG @ CH2 (Chicago). -->
+    <service id="ch2-trial" serviceId="Service.ContentGateway"
+             url="ams://cg-ch2-trial.activfinancial.com:9002/ContentGateway:Service?rxCompression=Rdc"/>
+    
+    <!-- # Trial CG @ TR1 (Toronto). -->
+    <service id="tr1-trial" serviceId="Service.ContentGateway"
+             url="ams://cg-tr1-trial.activfinancial.com:9049/ContentGateway:Service?rxCompression=Rdc"/>
+    
+    <!-- # Trial CG @ LD4 (London). -->
+    <service id="ld4-trial" serviceId="Service.ContentGateway"
+             url="ams://cg-ld4-trial.activfinancial.com:9160/ContentGateway:Service?rxCompression=Rdc"/>
+    
+    <!-- # Trial CG @ CC1 (Tokyo). -->
+    <service id="cc1-trial" serviceId="Service.ContentGateway"
+             url="ams://cg-cc1-trial.activfinancial.com:9002/ContentGateway:Service?rxCompression=Rdc"/>
+    
+    <!-- # Trial CG @ SGX (Singapore). -->
+    <service id="sgx-trial" serviceId="Service.ContentGateway"
+             url="ams://cg-sgx-trial.activfinancial.com:9002/ContentGateway:Service?rxCompression=Rdc"/>
+    
+    <!-- # Trial CG @ HKG4 (Hong Kong). -->
+    <service id="hkg4-trial" serviceId="Service.ContentGateway"
+             url="ams://cg-hkg4-trial.activfinancial.com:9002/ContentGateway:Service?rxCompression=Rdc"/>
+    
+    <!-- # Trial CG @ KR1 (Korea). -->
+    <service id="kr1-trial" serviceId="Service.ContentGateway"
+             url="ams://cg-kr1-trial.activfinancial.com:9002/ContentGateway:Service?rxCompression=Rdc"/>
+    
+    <!-- Local Content Gateway. -->
+    <service id="loopback" serviceId="Service.ContentGateway"
+             url="ams://127.0.0.1:9002/ContentGateway:Service,rxCompression=Rdc"/>
+    
+    <!-- Local Workstation Service. -->
+    <service id="loopback" serviceId="Service.WorkstationService"
+             url="ams://127.0.0.1:9003/System:WorkstationService,rxCompression=Rdc"/>
+    
+    <!-- Local Contribution Gateway. -->
+    <service id="loopback" serviceId="Service.ContributionGateway"
+             url="ams://127.0.0.1:9030/ContributionGateway:Service,rxCompression=Rdc"/>
+
+</services>
