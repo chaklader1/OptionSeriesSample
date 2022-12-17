@@ -22,6 +22,9 @@ import com.activfinancial.middleware.activbase.MiddlewareException;
 import com.activfinancial.middleware.fieldtypes.FieldTypeFactory;
 import com.activfinancial.middleware.fieldtypes.Rational;
 import com.activfinancial.middleware.fieldtypes.TRational;
+import com.activfinancial.middleware.system.RequestId;
+
+import static com.activfinancial.contentplatform.contentgatewayapi.ContentGatewayClient.getPattern;
 
 /**
  * helper class for the CG calls
@@ -52,10 +55,9 @@ public class GetOptionSeriesHelper {
      * @param symbol symbol
      * @param optionSeriesFilter filter
      * @param requestBlockOptions request block for options
-     * @param options list of options returned from the call 
      * @return StatusCode
      */
-    static public StatusCode getOptionSeries(ContentGatewayClient client, FieldListValidator fieldListValidator, String symbol, OptionSeriesFilter optionSeriesFilter, RequestBlock requestBlockOptions, List<OptionInfo> options) {
+    static public StatusCode getOptionSeries(ContentGatewayClient client, FieldListValidator fieldListValidator, String symbol, OptionSeriesFilter optionSeriesFilter, RequestBlock requestBlockOptions) {
         if (optionSeriesFilter == null)
             throw new IllegalArgumentException("Filter should not be null.");
 
@@ -91,25 +93,25 @@ public class GetOptionSeriesHelper {
             // now retrieve all the options for all the option roots
             statusCode = getOptionsFromRoots(client, fieldListValidator, optionsRequestParameters, optionsResponseParameters, optionRootsResponseParameters.responseBlockList, optionSeriesFilter, lastTrade);
             
-            if (statusCode == StatusCode.STATUS_CODE_SUCCESS) {
-                List<ResponseBlock> optionsResponseBlockList = optionsResponseParameters.responseBlockList;
-
-                for (ResponseBlock responseBlock : optionsResponseBlockList) {
-                    if (responseBlock.isValidResponse()) {
-                        try {
-                            // keep reusing the same fieldListValidator
-                            fieldListValidator.initialize(responseBlock.fieldData);
-
-                            OptionInfo optionInfo = new OptionInfo(lastTrade[0], responseBlock.responseKey.symbol, fieldListValidator);
-
-                            options.add(optionInfo);
-                        }
-                        catch (MiddlewareException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            }
+//            if (statusCode == StatusCode.STATUS_CODE_SUCCESS) {
+//                List<ResponseBlock> optionsResponseBlockList = optionsResponseParameters.responseBlockList;
+//
+//                for (ResponseBlock responseBlock : optionsResponseBlockList) {
+//                    if (responseBlock.isValidResponse()) {
+//                        try {
+//                            // keep reusing the same fieldListValidator
+//                            fieldListValidator.initialize(responseBlock.fieldData);
+//
+//                            OptionInfo optionInfo = new OptionInfo(lastTrade[0], responseBlock.responseKey.symbol, fieldListValidator);
+//
+//                            options.add(optionInfo);
+//                        }
+//                        catch (MiddlewareException e) {
+//                            e.printStackTrace();
+//                        }
+//                    }
+//                }
+//            }
         }
 
         return statusCode;
@@ -166,6 +168,8 @@ public class GetOptionSeriesHelper {
         }
 
         // get options now
-        return ContentGatewayClient.getPattern().sendRequest(client, optionsRequestParameters, optionsResponseParameters);
+        StatusCode statusCode = getPattern().postRequest(client, RequestId.generateEmptyRequestId(), optionsRequestParameters);
+        return statusCode;
+//        return ContentGatewayClient.getPattern().sendRequest(client, optionsRequestParameters, optionsResponseParameters);
     }
 }

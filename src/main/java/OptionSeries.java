@@ -1,27 +1,36 @@
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.activfinancial.contentplatform.contentgatewayapi.ContentGatewayClient;
 import com.activfinancial.contentplatform.contentgatewayapi.FieldListValidator;
+import com.activfinancial.contentplatform.contentgatewayapi.GetPattern;
 import com.activfinancial.contentplatform.contentgatewayapi.common.RequestBlock;
+import com.activfinancial.contentplatform.contentgatewayapi.common.ResponseBlock;
+import com.activfinancial.contentplatform.contentgatewayapi.common.UsEquityOptionHelper;
 import com.activfinancial.contentplatform.contentgatewayapi.consts.Exchange;
 import com.activfinancial.contentplatform.contentgatewayapi.consts.FieldIds;
+import com.activfinancial.contentplatform.contentgatewayapi.consts.MessageTypes;
 import com.activfinancial.middleware.StatusCode;
 import com.activfinancial.middleware.activbase.MiddlewareException;
 import com.activfinancial.middleware.application.Application;
 import com.activfinancial.middleware.application.Settings;
 import com.activfinancial.middleware.fieldtypes.Date;
 import com.activfinancial.middleware.fieldtypes.Rational;
+import com.activfinancial.middleware.system.HeapMessage;
 import com.activfinancial.samples.common.ui.io.UiIo;
 import com.activfinancial.samples.common.ui.io.UiIo.LogType;
 import org.javatuples.Quartet;
 
 
 
-public class OptionSeries extends ContentGatewayClient {
+public class OptionSeries extends ContentGatewayClient implements Runnable{
 
     private static final String COMMA = ",";
     final String DASH = "-";
     final String OPTION_CALL_SYMBOL = "C";
+
+    private static ExecutorService executorActiveClientThread = null;
 
     private UiIo uiIo = new UiIo();
 
@@ -38,7 +47,7 @@ public class OptionSeries extends ContentGatewayClient {
         "GOOGL230616C00142500",
         "NVDA240119P00235000",
         "META230217C00005000",
-        "META240621P00210000"
+//        "META240621P00210000"
     };
 
     private static Application application;
@@ -55,10 +64,13 @@ public class OptionSeries extends ContentGatewayClient {
         Settings settings = new Settings();
         application = new Application(settings);
 
-        new OptionSeries(application).run();
+        final OptionSeries activClient = new OptionSeries(application);
+        executorActiveClientThread = Executors.newFixedThreadPool(1, new MyDefaultThreadFactory("FeedHandler-ActivClientThread"));
+        executorActiveClientThread.execute( activClient );
+        activClient.myRun();
     }
 
-    private void run() throws MiddlewareException {
+    private void myRun() throws MiddlewareException {
 
         application.startThread();
         if (!connect())
@@ -86,6 +98,59 @@ public class OptionSeries extends ContentGatewayClient {
             uiIo.logMessage(LogType.LOG_TYPE_ERROR, "Connect() failed, error - " + statusCode.toString());
 
         return statusCode == StatusCode.STATUS_CODE_SUCCESS;
+    }
+
+    @Override
+    public void onGetPatternResponse(HeapMessage rawMessage)
+    {
+        try
+        {
+            if(rawMessage.getMessageType() == MessageTypes.GATEWAY_REQUEST_GET_PATTERN_EX){
+
+                if (isValidResponse(rawMessage))
+                {
+                    GetPattern.ResponseParameters responseParameters = new GetPattern.ResponseParameters();
+
+                    StatusCode statusCode = getPattern().deserialize(this, rawMessage, responseParameters);
+                    if (statusCode == StatusCode.STATUS_CODE_SUCCESS )
+                    {
+                        for (ResponseBlock responseBlock : responseParameters.responseBlockList) {
+                            try {
+                                if (responseBlock.isValidResponse()) {
+                                    fieldListValidator.initialize(responseBlock.fieldData);
+
+                                    final String osiSymbol = UsEquityOptionHelper.getOsiSymbolFromSymbol(responseBlock.responseKey.symbol).replaceAll("\\s+", "");
+
+                                    System.out.println(osiSymbol+" "+responseBlock.responseKey.symbol);
+//                                    processActivQuoteMsg(responseBlock.responseKey.symbol, MySolomeoMarketStateType.CURRENT, fieldListValidator.iterator());
+                                } else {
+
+                                    System.out.println("response block is not valid response: " + UsEquityOptionHelper.getOsiSymbolFromSymbol(responseBlock.responseKey.symbol).replaceAll("\\s+", ""));
+//                                    LOGGER.warn(me + "response block is not valid response" + responseBlock);
+                                }
+                            } catch (Exception ex) {
+                                System.out.println("Exception for initiating the field list validator with Activ symbols: "+UsEquityOptionHelper.getOsiSymbolFromSymbol(responseBlock.responseKey.symbol).replaceAll("\\s+", ""));
+//                                LOGGER.info(me + "Exception for initiating the field list validator with Activ symbols: " + responseBlock.responseKey.symbol + " and OSI Symbol: " + UsEquityOptionHelper.getOsiSymbolFromSymbol(responseBlock.responseKey.symbol).replaceAll("\\s+", "") + "\n" + new HandleStackTrace(ex));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        System.out.println("invalid snapshot status");
+//                        LOGGER.warn( me + "invalid snapshot status:" + statusCode  );
+                    }
+                }
+
+                else {
+
+                    System.out.println("snapshot message is not valid response with status");
+//                    LOGGER.warn(me + "snapshot message is not valid response with status: " + rawMessage.getStatusCode() + " and response: " + rawMessage);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+        }
     }
 
     private void runExample() throws MiddlewareException {
@@ -116,18 +181,28 @@ public class OptionSeries extends ContentGatewayClient {
             List<OptionInfo> options = new ArrayList<OptionInfo>();
 
             // get all options for an underling
-            StatusCode statusCode = GetOptionSeriesHelper.getOptionSeries(this, fieldListValidator, symbolStr, optionSeriesFilter, requestBlockOptions, options);
+            StatusCode statusCode = GetOptionSeriesHelper.getOptionSeries(this, fieldListValidator, symbolStr, optionSeriesFilter, requestBlockOptions);
 
             if (statusCode == StatusCode.STATUS_CODE_SUCCESS) {
-                for (OptionInfo optionInfo : options) {
-                    // dump to the screen
-                    uiIo.logMessage(LogType.LOG_TYPE_INFO, optionInfo.toString());
-                }
+//                for (OptionInfo optionInfo : options) {
+//                    // dump to the screen
+//                    uiIo.logMessage(LogType.LOG_TYPE_INFO, optionInfo.toString());
+//                }
+
+//                System.out.println("True");
             }
         }
-        
+
         // now disconnect
-        this.disconnect();
+//        this.disconnect();
+    }
+
+    @Override
+    public void run() {
+
+        while (true){
+//            System.out.println("Run, Lola Run!");
+        }
     }
 
     private void setupFilter(OptionSeriesFilter oSeriesFilter, String expDataStr, String strikePri, String optionTyp, String osiSymbol) throws MiddlewareException {
@@ -163,5 +238,6 @@ public class OptionSeries extends ContentGatewayClient {
                                                                OptionSeriesFilter.CallPutEnum.PUT;
         oSeriesFilter.setCallPut(callPutEnum);
     }
+
 
 }
