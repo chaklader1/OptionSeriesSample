@@ -1,7 +1,6 @@
 import java.util.*;
 
 import com.activfinancial.contentplatform.contentgatewayapi.ContentGatewayClient;
-import com.activfinancial.contentplatform.contentgatewayapi.ContentGatewayClient.ConnectParameters;
 import com.activfinancial.contentplatform.contentgatewayapi.FieldListValidator;
 import com.activfinancial.contentplatform.contentgatewayapi.common.RequestBlock;
 import com.activfinancial.contentplatform.contentgatewayapi.consts.Exchange;
@@ -18,7 +17,7 @@ import org.javatuples.Quartet;
 
 
 
-public class OptionSeries {
+public class OptionSeries extends ContentGatewayClient {
 
     private static final String COMMA = ",";
     final String DASH = "-";
@@ -26,7 +25,7 @@ public class OptionSeries {
 
     private UiIo uiIo = new UiIo();
 
-    ContentGatewayClient client;
+    private FieldListValidator fieldListValidator;
 
     private static final String[] osiSymbols = {
 
@@ -41,20 +40,27 @@ public class OptionSeries {
         "META230217C00005000",
         "META240621P00210000"
     };
-	
+
+    private static Application application;
+
+    public OptionSeries(Application application) {
+
+        super(application);
+
+        fieldListValidator = new FieldListValidator(this);
+    }
+
     public static void main(String[] args) throws MiddlewareException {
-        new OptionSeries().run();
+
+        Settings settings = new Settings();
+        application = new Application(settings);
+
+        new OptionSeries(application).run();
     }
 
     private void run() throws MiddlewareException {
 
-        Settings settings = new Settings();
-
-        Application application = new Application(settings);
         application.startThread();
-
-        this.client = new ContentGatewayClient(application);
-
         if (!connect())
             return;
 
@@ -74,7 +80,7 @@ public class OptionSeries {
         connectParameters.userId = "drwt1000-user11";
         connectParameters.password = "drwt-u11";
 
-        statusCode = this.client.connect(connectParameters, ContentGatewayClient.DEFAULT_TIMEOUT);
+        statusCode = this.connect(connectParameters, ContentGatewayClient.DEFAULT_TIMEOUT);
 
         if (StatusCode.STATUS_CODE_SUCCESS != statusCode)
             uiIo.logMessage(LogType.LOG_TYPE_ERROR, "Connect() failed, error - " + statusCode.toString());
@@ -106,15 +112,11 @@ public class OptionSeries {
             requestBlockOptions.fieldIdList.add(FieldIds.FID_STRIKE_PRICE);
             requestBlockOptions.fieldIdList.add(FieldIds.FID_OPTION_TYPE);
             requestBlockOptions.fieldIdList.add(FieldIds.FID_TRADE);
-            // add more fields as needed.
 
-            // FLV could be fetched from the thread local storage instead of constructing them each call.
-            // Will be using one fieldListValidator instance to minimize object construction.
-            FieldListValidator fieldListValidator = new FieldListValidator(this.client);
             List<OptionInfo> options = new ArrayList<OptionInfo>();
 
             // get all options for an underling
-            StatusCode statusCode = GetOptionSeriesHelper.getOptionSeries(this.client, fieldListValidator, symbolStr, optionSeriesFilter, requestBlockOptions, options);
+            StatusCode statusCode = GetOptionSeriesHelper.getOptionSeries(this, fieldListValidator, symbolStr, optionSeriesFilter, requestBlockOptions, options);
 
             if (statusCode == StatusCode.STATUS_CODE_SUCCESS) {
                 for (OptionInfo optionInfo : options) {
@@ -125,7 +127,7 @@ public class OptionSeries {
         }
         
         // now disconnect
-        this.client.disconnect();
+        this.disconnect();
     }
 
     private void setupFilter(OptionSeriesFilter oSeriesFilter, String expDataStr, String strikePri, String optionTyp, String osiSymbol) throws MiddlewareException {
