@@ -57,6 +57,13 @@
             <artifactId>activ-sample-common-lib</artifactId>
             <version>${activ-sdk.version}</version>
         </dependency>
+    
+        <dependency>
+            <groupId>org.javatuples</groupId>
+            <artifactId>javatuples</artifactId>
+            <version>1.2</version>
+        </dependency>
+        
     </dependencies>
 
 </project>

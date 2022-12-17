@@ -1,7 +1,4 @@
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import com.activfinancial.contentplatform.contentgatewayapi.ContentGatewayClient;
 import com.activfinancial.contentplatform.contentgatewayapi.ContentGatewayClient.ConnectParameters;
@@ -15,23 +12,41 @@ import com.activfinancial.middleware.application.Application;
 import com.activfinancial.middleware.application.Settings;
 import com.activfinancial.middleware.fieldtypes.Date;
 import com.activfinancial.middleware.fieldtypes.Rational;
-import com.activfinancial.middleware.service.FileConfiguration;
-import com.activfinancial.middleware.service.ServiceApi;
-import com.activfinancial.middleware.service.ServiceInstance;
 import com.activfinancial.samples.common.ui.io.UiIo;
 import com.activfinancial.samples.common.ui.io.UiIo.LogType;
+import org.javatuples.Quartet;
+
+
 
 public class OptionSeries {
-	
+
+    private static final String COMMA = ",";
+    final String DASH = "-";
+    final String OPTION_CALL_SYMBOL = "C";
+
     private UiIo uiIo = new UiIo();
 
     ContentGatewayClient client;
+
+    private static final String[] osiSymbols = {
+
+        "NVDA230915P00090000",
+        "META230217C00050000",
+        "GOOGL230317C00054000",
+        "NVDA230317P00080000",
+        "NVDA240119P00110000",
+        "NVDA230317P00100000",
+        "GOOGL230616C00142500",
+        "NVDA240119P00235000",
+        "META230217C00005000",
+        "META240621P00210000"
+    };
 	
-    public static void main(String[] args) {
+    public static void main(String[] args) throws MiddlewareException {
         new OptionSeries().run();
     }
 
-    private void run() {
+    private void run() throws MiddlewareException {
 
         Settings settings = new Settings();
 
@@ -48,101 +63,6 @@ public class OptionSeries {
         application.postDiesToThreads();
         application.waitForThreadsToExit();
     }
-    
-    private void runExample() {
-        // set up filter
-        OptionSeriesFilter optionSeriesFilter = new OptionSeriesFilter();
-        
-        String symbol = setupFilter(optionSeriesFilter);
-
-        // Construct this request block just once and cache it.
-        RequestBlock requestBlockOptions = new RequestBlock();
-
-        requestBlockOptions.fieldIdList.add(FieldIds.FID_SYMBOL);
-        requestBlockOptions.fieldIdList.add(FieldIds.FID_EXPIRATION_DATE);
-        requestBlockOptions.fieldIdList.add(FieldIds.FID_STRIKE_PRICE);
-        requestBlockOptions.fieldIdList.add(FieldIds.FID_OPTION_TYPE);
-        requestBlockOptions.fieldIdList.add(FieldIds.FID_TRADE);
-        // add more fields as needed.
-
-        // FLV could be fetched from the thread local storage instead of constructing them each call.
-        // Will be using one fieldListValidator instance to minimize object construction.
-        FieldListValidator fieldListValidator = new FieldListValidator(this.client);
-        List<OptionInfo> options = new ArrayList<OptionInfo>(); 
-        
-        // get all options for an underling
-        StatusCode statusCode = GetOptionSeriesHelper.getOptionSeries(this.client, fieldListValidator, symbol, optionSeriesFilter, requestBlockOptions, options);
-
-        if (statusCode == StatusCode.STATUS_CODE_SUCCESS) {
-        	for (OptionInfo optionInfo : options) {
-		        // dump to the screen
-		        uiIo.logMessage(LogType.LOG_TYPE_INFO, optionInfo.toString());
-        	}
-        }
-        
-        // now disconnect
-        this.client.disconnect();
-    }
-
-	private String setupFilter(OptionSeriesFilter optionSeriesFilter) {
-		String symbol = "META";
-//        try {
-//            symbol = uiIo.getString("Enter Symbol", "CAJ", true, true);
-//        } catch (MiddlewareException e) {
-//        }
-        
-//        try
-//        {
-//            optionSeriesFilter.setStartDate(uiIo.getFieldType("Enter Start Date", new Date(), false, false));
-//        }
-//        catch (MiddlewareException e) {
-//            // enter pressed
-//        }
-//        try
-//        {
-//            optionSeriesFilter.setEndDate(uiIo.getFieldType("Enter End Date", new Date(), false, false));
-//        }
-//        catch (MiddlewareException e) {
-//            // enter pressed
-//        }
-//        try
-//        {
-//            optionSeriesFilter.setLowStrike(uiIo.getFieldType("Enter Low Strike", new Rational(), false, false));
-//        }
-//        catch (MiddlewareException e) {
-//            // enter pressed
-//        }
-//        try
-//        {
-//            optionSeriesFilter.setHighStrike(uiIo.getFieldType("Enter High Strike", new Rational(), false, false));
-//        }
-//        catch (MiddlewareException e) {
-//            // enter pressed
-//        }
-        
-        // both calls and puts
-        optionSeriesFilter.setCallPut(OptionSeriesFilter.CallPutEnum.BOTH);
-        
-        // set at the money parameters
-//        if (StatusCode.STATUS_CODE_SUCCESS == uiIo.getConfirmation("Fetch only 'At the money' options?", false)) {
-//        	optionSeriesFilter.setAtTheMoney(true);
-//            try {
-//				optionSeriesFilter.setAtTheMoneyRange(uiIo.getFieldType("Enter 'At the money range'", new Rational(5), true, true));
-//			} catch (MiddlewareException e) {
-//	            // enter pressed
-//			}
-//        }
-//        else {
-//        	optionSeriesFilter.setAtTheMoney(false);
-//        }
-        optionSeriesFilter.setAtTheMoney(false);
-
-        List<String> exchangeList = new ArrayList<String>();
-        
-        exchangeList.add(Exchange.EXCHANGE_US_OPTIONS_COMPOSITE);
-        optionSeriesFilter.setExchangeList(exchangeList);
-		return symbol;
-	}
 
     private boolean connect() {
         StatusCode statusCode;
@@ -161,4 +81,85 @@ public class OptionSeries {
 
         return statusCode == StatusCode.STATUS_CODE_SUCCESS;
     }
+
+    private void runExample() throws MiddlewareException {
+
+        OptionSeriesFilter optionSeriesFilter = new OptionSeriesFilter();
+        optionSeriesFilter.setExchangeList(Arrays.asList(Exchange.EXCHANGE_US_OPTIONS_COMPOSITE));
+
+        for (String osiSymbol : osiSymbols) {
+
+            final Quartet<String, String, String, String> optionsData = ActivHashCodeConversionUtility.createOptionsData(osiSymbol);
+
+            final String symbolStr = optionsData.getValue0();
+            final String expirationDateStr = optionsData.getValue1();
+            final String strikePriceStr = optionsData.getValue2();
+            final String optionTypeStr = optionsData.getValue3();
+
+            setupFilter(optionSeriesFilter, expirationDateStr, strikePriceStr, optionTypeStr, osiSymbol);
+
+            // Construct this request block just once and cache it.
+            RequestBlock requestBlockOptions = new RequestBlock();
+
+            requestBlockOptions.fieldIdList.add(FieldIds.FID_SYMBOL);
+            requestBlockOptions.fieldIdList.add(FieldIds.FID_EXPIRATION_DATE);
+            requestBlockOptions.fieldIdList.add(FieldIds.FID_STRIKE_PRICE);
+            requestBlockOptions.fieldIdList.add(FieldIds.FID_OPTION_TYPE);
+            requestBlockOptions.fieldIdList.add(FieldIds.FID_TRADE);
+            // add more fields as needed.
+
+            // FLV could be fetched from the thread local storage instead of constructing them each call.
+            // Will be using one fieldListValidator instance to minimize object construction.
+            FieldListValidator fieldListValidator = new FieldListValidator(this.client);
+            List<OptionInfo> options = new ArrayList<OptionInfo>();
+
+            // get all options for an underling
+            StatusCode statusCode = GetOptionSeriesHelper.getOptionSeries(this.client, fieldListValidator, symbolStr, optionSeriesFilter, requestBlockOptions, options);
+
+            if (statusCode == StatusCode.STATUS_CODE_SUCCESS) {
+                for (OptionInfo optionInfo : options) {
+                    // dump to the screen
+                    uiIo.logMessage(LogType.LOG_TYPE_INFO, optionInfo.toString());
+                }
+            }
+        }
+        
+        // now disconnect
+        this.client.disconnect();
+    }
+
+    private void setupFilter(OptionSeriesFilter oSeriesFilter, String expDataStr, String strikePri, String optionTyp, String osiSymbol) throws MiddlewareException {
+
+        String me = "OptionsSubscription.setupFilter() ";
+
+        final String[] split = expDataStr.split(DASH);
+        final int dateVal = Integer.parseInt(split[0]);
+        final int monthVal = Integer.parseInt(split[1]);
+        final int yearVal = Integer.parseInt(split[2]);
+
+        final com.activfinancial.middleware.fieldtypes.Date date;
+        try {
+            date = new Date(yearVal, monthVal, dateVal);
+            oSeriesFilter.setStartDate(date);
+            oSeriesFilter.setEndDate(date);
+        } catch (MiddlewareException e) {
+            e.printStackTrace();
+        }
+
+        final double strikePrice = Double.parseDouble(strikePri);
+        final Rational rational = ActivHashCodeConversionUtility.findStrikePriceRational(strikePrice);
+
+        if (rational == null) {
+            return;
+        }
+
+        oSeriesFilter.setLowStrike(rational);
+        oSeriesFilter.setHighStrike(rational);
+
+        final OptionSeriesFilter.CallPutEnum callPutEnum = optionTyp.equalsIgnoreCase(OPTION_CALL_SYMBOL) ?
+                                                               OptionSeriesFilter.CallPutEnum.CALL :
+                                                               OptionSeriesFilter.CallPutEnum.PUT;
+        oSeriesFilter.setCallPut(callPutEnum);
+    }
+
 }
